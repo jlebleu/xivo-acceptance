@@ -18,7 +18,8 @@
 import re
 
 from collections import namedtuple
-from datetime import datetime, timedelta
+from datetime import datetime
+from lettuce import world
 from xivo_lettuce import sysutils
 
 DAEMON_LOGFILE = '/var/log/daemon.log'
@@ -59,42 +60,42 @@ XIVO_RESTAPI_LOG_INFO = LogfileInfo(logfile=XIVO_RESTAPI_LOGFILE,
                                     date_pattern=RESTAPI_DATE_PATTERN)
 
 
-def search_str_in_daemon_log(expression, delta=10):
-    return _search_str_in_log_file(expression, DAEMON_LOG_INFO, delta)
+def search_str_in_daemon_log(expression):
+    return _search_str_in_log_file(expression, DAEMON_LOG_INFO)
 
 
-def search_str_in_asterisk_log(expression, delta=10):
-    return _search_str_in_log_file(expression, ASTERISK_LOG_INFO, delta)
+def search_str_in_asterisk_log(expression):
+    return _search_str_in_log_file(expression, ASTERISK_LOG_INFO)
 
 
-def search_str_in_xivo_agent_log(expression, delta=10):
-    return _search_str_in_log_file(expression, XIVO_AGENT_LOG_INFO, delta)
+def search_str_in_xivo_agent_log(expression):
+    return _search_str_in_log_file(expression, XIVO_AGENT_LOG_INFO)
 
 
-def search_str_in_xivo_cti_log(expression, delta=10):
-    return _search_str_in_log_file(expression, XIVO_CTI_LOG_INFO, delta)
+def search_str_in_xivo_cti_log(expression):
+    return _search_str_in_log_file(expression, XIVO_CTI_LOG_INFO)
 
 
-def search_str_in_xivo_restapi_log(expression, delta=10):
-    return _search_str_in_log_file(expression, XIVO_RESTAPI_LOG_INFO, delta)
+def search_str_in_xivo_restapi_log(expression):
+    return _search_str_in_log_file(expression, XIVO_RESTAPI_LOG_INFO)
 
 
-def find_line_in_daemon_log(delta=10):
-    return _find_line_in_log_file(DAEMON_LOG_INFO, delta)
+def find_line_in_daemon_log():
+    return _find_line_in_log_file(DAEMON_LOG_INFO)
 
 
-def find_line_in_xivo_restapi_log(delta=10):
-    return _find_line_in_log_file(XIVO_RESTAPI_LOG_INFO, delta)
+def find_line_in_xivo_restapi_log():
+    return _find_line_in_log_file(XIVO_RESTAPI_LOG_INFO)
 
 
-def _find_line_in_log_file(loginfo, delta=10):
-    min_datetime = xivo_current_datetime() - timedelta(seconds=delta)
+def _find_line_in_log_file(loginfo):
+    min_datetime = world.scenario_started_at
     loglines = get_lines_since_timestamp(min_datetime, loginfo)
     return loglines
 
 
 def _find_all_lines_in_log_file(loginfo):
-    command = ['tail', '-n', '30', loginfo.logfile]
+    command = ['cat', loginfo.logfile]
     result = sysutils.output_command(command)
     lines = result.split("\n")
     return lines
@@ -106,8 +107,8 @@ def xivo_current_datetime():
     return datetime.fromtimestamp(float(output))
 
 
-def _search_str_in_log_file(expression, loginfo, delta=10):
-    loglines = _find_line_in_log_file(loginfo, delta)
+def _search_str_in_log_file(expression, loginfo):
+    loglines = _find_line_in_log_file(loginfo)
 
     for line in loglines:
         if expression in line:

@@ -21,9 +21,11 @@ import tempfile
 from lettuce import before, after, world
 from xivobrowser import XiVOBrowser
 
+
 from xivo_acceptance.helpers import asterisk_helper
 from xivo_lettuce.config import XivoAcceptanceConfig
 from xivo_lettuce import common
+from xivo_lettuce import logs
 from xivo_lettuce.phone_register import PhoneRegister
 from selenium.common.exceptions import NoSuchElementException
 
@@ -40,6 +42,7 @@ def xivo_lettuce_before_each_scenario(scenario):
     world.number = None
     world.lineid = None
     scenario.phone_register = PhoneRegister()
+    world.scenario_started_at = logs.xivo_current_datetime()
     _check_webi_login_root()
 
 
