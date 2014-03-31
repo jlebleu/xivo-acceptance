@@ -18,12 +18,25 @@
 import json
 import requests
 
-from lettuce.registry import world
+from hamcrest import assert_that, equal_to
 
-from xivo_lettuce.remote_py_cmd import remote_exec
+from lettuce.registry import world
+from xivo_acceptance.action.restapi import device_action_restapi as device_action
 
 AUTOPROV_URL = 'https://%s/xivo/configuration/json.php/restricted/provisioning/autoprov?act=configure'
 HEADERS = {'Content-Type': 'application/json'}
+
+
+def find_devices_with(key, value):
+    devices = [device
+               for device in device_action.device_list({key: value}).data['items']
+               if device[key] == value]
+    return devices
+
+
+def find_device_with(key, value):
+    devices = find_devices_with(key, value)
+    return devices[0] if devices else None
 
 
 def provision_device_using_webi(provcode, device_ip):
@@ -41,12 +54,46 @@ def _prepare_auth():
 
 
 def create_dummy_devices(nb_devices):
-    remote_exec(_create_dummy_devices, nb_devices=nb_devices)
-
-
-def _create_dummy_devices(channel, nb_devices):
-    from xivo_dao.data_handler.device import services as device_services
-    from xivo_dao.data_handler.device.model import Device
-
     for i in range(nb_devices):
-        device_services.create(Device())
+        create_dummy_device()
+
+
+def create_dummy_device():
+    return device_action.create_device({})
+
+
+def delete_device_with(key, value):
+    for device in find_devices_with(key, value):
+        delete_device(device['id'])
+
+
+def delete_device(device_id):
+    device_action.reset_to_autoprov(device_id)
+    device_action.delete_device(device_id)
+
+
+def remove_devices_over(nb_devices):
+    devices = device_action.device_list().data['items']
+    for device in devices[nb_devices:]:
+        delete_device(device['id'])
+
+
+def total_devices():
+    response = device_action.device_list()
+    return response.data['total']
+
+
+def add_or_replace_device(device):
+    remove_device(device)
+
+    response = device_action.create_device(device)
+    assert_that(response.status, equal_to(201), response.data)
+
+    return response.data
+
+
+def remove_device(device):
+    if 'mac' in device:
+        delete_device_with('mac', device['mac'])
+    if 'ip' in device:
+        delete_device_with('ip', device['ip'])
