@@ -15,9 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-from lettuce import step
-from hamcrest import *
-from urllib2 import HTTPError
+from lettuce import step, world
+from hamcrest import assert_that, equal_to, none, contains_string, has_item
 
 from xivo_acceptance.action.webi import device as device_action_webi
 from xivo_acceptance.helpers import device_helper, provd_helper
@@ -56,13 +55,14 @@ def when_i_search_device_by_number(step, number):
 
 @step(u'When I create the device with infos:')
 def when_i_create_the_device_with_infos(step):
-    common.open_url('device', 'add')
     device_infos = step.hashes[0]
+
+    device_helper.remove_device(device_infos)
+    common.open_url('device', 'add')
+
     if 'mac' in device_infos:
-        provd_helper.delete_device_with_mac(device_infos['mac'])
         device_action_webi.type_input('mac', device_infos['mac'])
     if 'ip' in device_infos:
-        provd_helper.delete_device_with_ip(device_infos['ip'])
         device_action_webi.type_input('ip', device_infos['ip'])
     if 'plugin' in device_infos:
         device_action_webi.type_input('plugin', device_infos['plugin'])
@@ -132,39 +132,37 @@ def then_i_see_devices_with_infos(step):
             assert_that(actual_device['configured'], equal_to(expected_configured))
 
 
-@step(u'Then I see in the log file device "([^"]*)" synchronized')
-def then_i_see_in_the_log_file_device_synchronized(step, device_id):
-    expected_log_lines = ['Synchronizing device %s' % device_id]
+@step(u'Then I see in the log file device with mac "([^"]*)" synchronized')
+def then_i_see_in_the_log_file_device_synchronized(step, mac):
+    device = device_helper.find_device_with('mac', mac)
+    expected_log_lines = ['Synchronizing device %s' % device['id']]
     actual_log_lines = logs.find_line_in_daemon_log()
     _assert_all_lines_in_log(actual_log_lines, expected_log_lines)
 
 
-@step(u'Then I see in the log file device "([^"]*)" autoprovisioned')
-def then_i_see_in_the_log_file_device_group1_autoprovisioned(step, device_id):
+@step(u'Then I see in the log file device with mac "([^"]*)" autoprovisioned')
+def then_i_see_in_the_log_file_device_group1_autoprovisioned(step, mac):
+    device = device_helper.find_device_with('mac', mac)
     expected_log_lines = ['Creating new config',
                           '/provd/cfg_mgr/autocreate',
                           'Updating device',
-                          '/provd/dev_mgr/devices/%s' % device_id]
+                          '/provd/dev_mgr/devices/%s' % device['id']]
     actual_log_lines = logs.find_line_in_daemon_log()
     _assert_all_lines_in_log(actual_log_lines, expected_log_lines)
 
 
-@step(u'Then the device "([^"]*)" is no longer exists in provd')
-def then_the_device_is_no_longer_exists_in_provd(step, device_id):
-    try:
-        provd_helper.get_device(device_id)
-    except HTTPError:
-        assert True
-    else:
-        assert False, 'The device %s is longer exists in provd' % device_id
+@step(u'Then the device with mac "([^"]*)" no longer exists in provd')
+def then_the_device_is_no_longer_exists_in_provd(step, mac):
+    device = provd_helper.find_by('mac', mac)
+    assert_that(device, none())
 
 
-@step(u'Then I see in the log file device "([^"]*)" deleted')
-def then_i_see_in_the_log_file_device_deleted(step, device_id):
-    expected_log_lines = ['Deleting device %s' % device_id,
-                          '/provd/dev_mgr/devices/%s' % device_id,
-                          'Deleting config %s' % device_id,
-                          '/provd/cfg_mgr/configs/%s' % device_id]
+@step(u'Then I see in the log file that the memorized device id was deleted')
+def then_i_see_in_the_log_file_device_deleted(step):
+    expected_log_lines = ['Deleting device %s' % world.device_id,
+                          '/provd/dev_mgr/devices/%s' % world.device_id,
+                          'Deleting config %s' % world.device_id,
+                          '/provd/cfg_mgr/configs/%s' % world.device_id]
     actual_log_lines = logs.find_line_in_daemon_log()
     _assert_all_lines_in_log(actual_log_lines, expected_log_lines)
 

@@ -26,29 +26,18 @@ from xivo_lettuce.xivo_hamcrest import assert_has_dicts_in_order
 
 @step(u'Given there are no devices with mac "([^"]*)"')
 def given_there_are_no_devices_with_mac_group1(step, mac):
-    provd_helper.delete_device_with_mac(mac)
+    device_helper.delete_device_with('mac', mac)
 
 
 @step(u'Given there are no devices with id "([^"]*)"')
 def given_there_are_no_devices_with_id_group1(step, device_id):
-    provd_helper.delete_device(device_id)
-
-
-@step(u'Given I only have the following devices:')
-def given_there_are_the_following_devices(step):
-    provd_helper.delete_all()
-    for deviceinfo in step.hashes:
-        provd_helper.create_device(deviceinfo)
+    device_action_restapi.delete_device(device_id)
 
 
 @step(u'Given I have the following devices:')
 def given_i_have_the_following_devices(step):
     for deviceinfo in step.hashes:
-        if 'mac' in deviceinfo:
-            provd_helper.delete_device_with_mac(deviceinfo['mac'])
-        if 'ip' in deviceinfo:
-            provd_helper.delete_device_with_ip(deviceinfo['ip'])
-        provd_helper.create_device(deviceinfo)
+        device_helper.add_or_replace_device(deviceinfo)
 
 
 @step(u'Given there exists the following device templates:')
@@ -60,9 +49,9 @@ def given_there_exists_the_following_device_template(step):
 @step(u'Given I only have (\d+) devices')
 def given_i_only_have_n_devices(step, nb_devices):
     nb_devices = int(nb_devices)
-    provd_helper.remove_devices_over(nb_devices)
+    device_helper.remove_devices_over(nb_devices)
 
-    total_devices = provd_helper.total_devices()
+    total_devices = device_helper.total_devices()
     if total_devices < nb_devices:
         device_helper.create_dummy_devices(nb_devices - total_devices)
 
@@ -99,14 +88,22 @@ def when_i_delete_the_device(step, device_id):
     world.response = device_action_restapi.delete_device(device_id)
 
 
-@step(u'When I associate my line_id "([^"]*)" to the device "([^"]*)"')
-def when_i_associate_my_line_id_to_the_device(step, line_id, device_id):
-    world.response = device_action_restapi.associate_line_to_device(device_id, line_id)
+@step(u'When I delete the device with mac "([^"]*)" from restapi')
+def when_i_delete_the_device_with_mac(step, mac):
+    device = device_helper.find_device_with('mac', mac)
+    world.response = device_action_restapi.delete_device(device['id'])
 
 
-@step(u'^When I synchronize the device "([^"]*)" from restapi$')
-def when_i_synchronize_the_device_group1_from_restapi(step, device_id):
-    world.response = device_action_restapi.synchronize(device_id)
+@step(u'When I associate my line_id "([^"]*)" to the device with mac "([^"]*)"')
+def when_i_associate_my_line_id_to_the_device(step, line_id, mac):
+    device = device_helper.find_device_with('mac', mac)
+    world.response = device_action_restapi.associate_line_to_device(device['id'], line_id)
+
+
+@step(u'^When I synchronize the device with mac "([^"]*)" from restapi$')
+def when_i_synchronize_the_device_group1_from_restapi(step, mac):
+    device = device_helper.find_device_with('mac', mac)
+    world.response = device_action_restapi.synchronize(device['id'])
 
 
 @step(u'When I go get the device with id "([^"]*)"')
@@ -116,7 +113,7 @@ def when_i_go_get_the_device_with_id_group1(step, device_id):
 
 @step(u'When I go get the device with mac "([^"]*)" using its id')
 def when_i_go_get_the_device_with_mac_group1_using_its_id(step, mac):
-    device = provd_helper.find_by_mac(mac)
+    device = device_helper.find_device_with('mac', mac)
     world.response = device_action_restapi.get_device(device['id'])
 
 
@@ -131,9 +128,10 @@ def when_i_request_a_list_of_devices_with_the_following_query_parameters(step):
     world.response = device_action_restapi.device_list(parameters)
 
 
-@step(u'When I reset the device "([^"]*)" to autoprov from restapi')
-def when_i_reset_the_device_to_autoprov_from_restapi(step, device_id):
-    world.response = device_action_restapi.reset_to_autoprov(device_id)
+@step(u'When I reset the device with mac "([^"]*)" to autoprov from restapi')
+def when_i_reset_the_device_to_autoprov_from_restapi(step, mac):
+    device = device_helper.find_device_with('mac', mac)
+    world.response = device_action_restapi.reset_to_autoprov(device['id'])
 
 
 @step(u'When I remove line_id "([^"]*)" from device "([^"]*)"')
@@ -143,15 +141,21 @@ def when_i_remove_line_id_group1_from_device_group2(step, line_id, device_id):
 
 @step(u'When I edit the device with mac "([^"]*)" using no parameters')
 def when_i_edit_the_device_with_mac_group1_using_no_parameters(step, mac):
-    device = provd_helper.find_by_mac(mac)
+    device = device_helper.find_device_with('mac', mac)
     world.response = device_action_restapi.edit_device(device['id'], {})
 
 
 @step(u'When I edit the device with mac "([^"]*)" using the following parameters:')
 def when_i_edit_the_device_with_mac_group1_using_the_following_parameters(step, mac):
-    device = provd_helper.find_by_mac(mac)
+    device = device_helper.find_device_with('mac', mac)
     parameters = step.hashes[0]
     world.response = device_action_restapi.edit_device(device['id'], parameters)
+
+
+@step(u'When I memorize the id for device with mac "([^"]*)"')
+def when_i_memorize_the_id_for_device_with_mac_group1(step, mac):
+    device = device_helper.find_device_with('mac', mac)
+    world.device_id = device['id']
 
 
 @step(u'Then I get a response with a device id')
@@ -183,7 +187,7 @@ def then_i_get_a_list_containing_the_following_devices(step):
 
 @step(u'Then the list contains the same number of devices as on the provisioning server')
 def then_the_list_contains_the_same_number_of_devices_as_on_the_provisioning_server(step):
-    total_provd = provd_helper.total_devices()
+    total_provd = device_helper.total_devices()
 
     device_list = world.response.data['items']
 

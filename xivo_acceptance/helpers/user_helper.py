@@ -18,7 +18,7 @@
 from lettuce import world
 from execnet.gateway_base import RemoteError
 
-from xivo_acceptance.helpers import group_helper, provd_helper, line_helper, voicemail_helper, func_key_helper
+from xivo_acceptance.helpers import group_helper, device_helper, line_helper, voicemail_helper, func_key_helper
 from xivo_dao.data_handler.user import dao as user_dao
 from xivo_dao.data_handler.user import services as user_services
 from xivo_dao.data_handler.exception import ElementNotExistsError
@@ -230,9 +230,8 @@ def add_user(data_dict):
         if 'protocol' in data_dict:
             user.line.protocol = data_dict['protocol']
         if 'device' in data_dict:
-            device = provd_helper.find_by_mac(data_dict['device'])
-            device_id = str(device['id'])
-            user.line.device_id = device_id
+            device = device_helper.find_device_with('mac', data_dict['device'])
+            user.line.device_id = device['id']
 
     if 'voicemail_name' in data_dict and 'voicemail_number' in data_dict:
         user.voicemail = UserVoicemail()
