@@ -25,18 +25,7 @@ from xivo_acceptance.action.restapi import user_action_restapi
 @step(u'Given I have the following users:')
 def given_i_have_the_following_users(step):
     for userinfo in step.hashes:
-        _delete_user(userinfo)
-        _create_user(userinfo)
-
-
-def _delete_user(userinfo):
-    if 'id' in userinfo:
-        user_helper.delete_user(int(userinfo['id']))
-
-    if 'firstname' in userinfo and 'lastname' in userinfo:
-        user = user_helper.find_by_firstname_lastname(userinfo['firstname'], userinfo['lastname'])
-        if user:
-            user_helper.delete_user(user.id)
+        user_helper.add_or_replace_user(userinfo)
 
 
 def _create_user(userinfo):
@@ -45,7 +34,7 @@ def _create_user(userinfo):
 
 @step(u'Given there are no users with id "([^"]*)"$')
 def given_there_are_no_users_with_id_group1(step, user_id):
-    user_helper.delete_with_user_id(user_id)
+    user_helper.delete_user(user_id)
 
 
 @step(u'When I ask for the list of users$')
@@ -82,9 +71,9 @@ def when_i_update_the_user_with_id_group1_using_the_following_parameters(step, u
 
 @step(u'When I update user "([^"]*)" "([^"]*)" with the following parameters:')
 def when_i_update_user_group1_group2_with_the_following_parameters(step, firstname, lastname):
-    user = user_helper.find_by_firstname_lastname(firstname, lastname)
+    user = user_helper.get_by_firstname_lastname(firstname, lastname)
     userinfo = _get_user_info(step.hashes)
-    world.response = user_action_restapi.update_user(user.id, userinfo)
+    world.response = user_action_restapi.update_user(user['id'], userinfo)
 
 
 @step(u'When I delete the user with id "([^"]*)"$')
@@ -94,9 +83,8 @@ def when_i_delete_the_user_with_id_group1(step, userid):
 
 @step(u'When I delete the user with name "([^"]*)" "([^"]*)"')
 def when_i_delete_the_user_with_name_group1_group2(step, firstname, lastname):
-    user = user_helper.find_by_firstname_lastname(firstname, lastname)
-    assert_that(user, is_not(none()))
-    world.response = user_action_restapi.delete_user(user.id)
+    user = user_helper.get_by_firstname_lastname(firstname, lastname)
+    world.response = user_action_restapi.delete_user(user['id'])
 
 
 @step(u'Then I get a list containing the following users:')

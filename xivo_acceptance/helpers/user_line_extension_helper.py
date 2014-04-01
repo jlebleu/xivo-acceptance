@@ -19,6 +19,7 @@ from lettuce import world
 
 from xivo_acceptance.helpers import user_helper, voicemail_helper, line_helper, extension_helper
 from xivo_lettuce.exception import NoSuchProfileException
+from xivo_lettuce.postgres import exec_sql_request
 
 
 def delete_user_line_extension_voicemail(firstname, lastname, context=None, exten=None, mailbox=None):
@@ -28,7 +29,7 @@ def delete_user_line_extension_voicemail(firstname, lastname, context=None, exte
     if mailbox and context:
         voicemail_helper.delete_voicemail_with_number_context(mailbox, context)
     delete_user_line_extension_with_firstname_lastname(firstname, lastname)
-    user_helper.delete_all_user_with_firstname_lastname(firstname, lastname)
+    user_helper.delete_users_with_firstname_lastname(firstname, lastname)
 
 
 def delete_user_line_extension_with_firstname_lastname(firstname, lastname):
@@ -44,9 +45,10 @@ def delete_sccp_lines_with_exten(exten, context):
 
 
 def delete_user_line_extension_with_user_id(user_id):
-    user = user_helper.get_by_user_id(user_id)
-    if not user:
+    if not user_helper.user_exists(user_id):
         return
+
+    user = user_helper.get_user(user_id)
 
     line_id = user_helper.find_line_id_for_user(user_id)
     if line_id:
@@ -88,3 +90,21 @@ def delete_users_with_profile(profile_name):
             if user.voicemail:
                 voicemail_helper.delete_voicemail_with_user_id(user.id)
             delete_user_line_extension_with_user_id(user.id)
+
+
+def user_id_for_extension(extension, context):
+    query = """
+    SELECT userfeatures.id
+    FROM userfeatures
+        INNER JOIN user_line
+            ON userfeatures.id = user_line.user_id
+            AND user_line.main_user = true
+            INNER JOIN extensions
+                ON extensions.id = user_line.extension_id
+    WHERE
+        extensions.exten = :extension
+        AND extensions.context = :context
+    """
+
+    cursor = exec_sql_request(query, extension=extension, context=context)
+    return cursor.scalar()

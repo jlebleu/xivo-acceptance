@@ -21,7 +21,7 @@ from lettuce import step, world
 
 from xivo_acceptance.action.webi import queue as queue_action_webi
 from xivo_acceptance.helpers import agent_helper, queue_helper, \
-    schedule_helper, user_helper
+    schedule_helper
 from xivo_acceptance.helpers import user_line_extension_helper as ule_helper
 from xivo_lettuce import common
 from xivo_lettuce import form
@@ -45,12 +45,8 @@ def given_there_are_queues_with_infos(step):
 
 
 def convert_user_numbers(user_numbers, context):
-    users = []
-    user_number_list = user_numbers.split(',')
-    for user_number in user_number_list:
-        user = user_helper.get_by_exten_context(user_number, context)
-        if user:
-            users.extend([user.id])
+    users = [ule_helper.user_id_for_extension(extension, context)
+             for extension in user_numbers]
     return users
 
 

@@ -15,161 +15,92 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 
+from hamcrest import assert_that, is_not, none, any_of
 from lettuce import world
-from execnet.gateway_base import RemoteError
 
+from xivo_acceptance.action.restapi import user_action_restapi as user_action
+from xivo_acceptance.action.restapi import user_line_action_restapi as user_line_action
 from xivo_acceptance.helpers import group_helper, device_helper, line_helper, voicemail_helper, func_key_helper
-from xivo_dao.data_handler.user import dao as user_dao
-from xivo_dao.data_handler.user import services as user_services
-from xivo_dao.data_handler.exception import ElementNotExistsError
 from xivo_lettuce import postgres
-from xivo_lettuce.remote_py_cmd import remote_exec, remote_exec_with_result
 from xivo_ws import User, UserLine, UserVoicemail
 from xivo_ws.exception import WebServiceRequestError
 
 
-def get_by_user_id(user_id):
-    try:
-        user = user_services.get(user_id)
-    except ElementNotExistsError:
-        return None
+def add_or_replace_user(user):
+    if 'id' in user:
+        delete_user(user['id'])
+    if 'firstname' in user and 'lastname' in user:
+        delete_users_with_firstname_lastname(user['firstname'], user['lastname'])
+    create_user(user)
+
+
+def response_for(response):
+    assert_that(response.status, any_of(200, 201, 204), response.data)
+    return response.data
+
+
+def user_exists(user_id):
+    response = user_action.get_user(user_id)
+    return response.status == 200
+
+
+def get_user(user_id):
+    user = response_for(user_action.get_user(user_id))
     return user
 
 
-def get_by_exten_context(exten, context):
-    try:
-        user = user_services.get_by_number_context(exten, context)
-    except ElementNotExistsError:
-        return None
-    return user
+def find_all_by_firstname_lastname(firstname, lastname):
+    fullname = "%s %s" % (firstname, lastname)
+    response = response_for(user_action.user_search(fullname))
+    matching = [user
+                for user in response['items']
+                if user['firstname'] == firstname and user['lastname'] == lastname]
+    return matching
 
 
 def find_by_firstname_lastname(firstname, lastname):
-    return user_services.find_by_firstname_lastname(firstname, lastname)
+    users = find_all_by_firstname_lastname(firstname, lastname)
+    return users[0] if users else None
 
 
 def get_by_firstname_lastname(firstname, lastname):
     user = find_by_firstname_lastname(firstname, lastname)
-    if user is None:
-        raise Exception('expecting user with name %r %r; not found' % (firstname, lastname))
+    assert_that(user, is_not(none()), "user %s %s not found" % (firstname, lastname))
     return user
 
 
 def find_user_id_with_firstname_lastname(firstname, lastname):
     user = get_by_firstname_lastname(firstname, lastname)
-    return user.id
-
-
-def find_user_by_name(name):
-    firstname, lastname = name.split(" ")
-    return user_dao.find_user(firstname, lastname)
+    return user['id']
 
 
 def find_line_id_for_user(user_id):
-    return remote_exec_with_result(_find_line_id_for_user, user_id=user_id)
-
-
-def _find_line_id_for_user(channel, user_id):
-    from xivo_dao.data_handler.user_line import services as user_line_services
-    user_lines = user_line_services.find_all_by_user_id(user_id)
-
-    if len(user_lines) > 0:
-        channel.send(user_lines[0].line_id)
-    else:
-        channel.send(None)
-
-
-def is_user_with_name_exists(firstname, lastname):
-    user = user_services.find_by_firstname_lastname(firstname, lastname)
-    if user is None:
-        return False
-    return True
+    response = response_for(user_line_action.get_user_line(user_id))
+    if response['items']:
+        return response['items'][0]['line_id']
 
 
 def create_user(userinfo):
-    remote_exec(_create_user, userinfo=userinfo)
+    response_for(user_action.create_user(userinfo))
 
 
-def _create_user(channel, userinfo):
-    from xivo_dao.data_handler.user import services as user_services
-    from xivo_dao.data_handler.user.model import User
-
-    user = User(**userinfo)
-    user_services.create(user)
-
-
-def delete_all_user_with_firstname_lastname(firstname, lastname):
-    try:
-        remote_exec(_delete_all_user_with_firstname_lastname, firstname=firstname, lastname=lastname)
-    except RemoteError:
-        pass
-
-
-def _delete_all_user_with_firstname_lastname(channel, firstname, lastname):
-    from xivo_dao.data_handler.user import services as user_services
-
-    fullname = '%s %s' % (firstname, lastname)
-    users = user_services.find_all_by_fullname(fullname)
-
-    if users:
-        for user in users:
-            user_services.delete(user)
-
-
-def delete_with_user_id(user_id):
-    try:
-        remote_exec(_delete_with_user_id, user_id=user_id)
-    except RemoteError:
-        pass
-
-
-def _delete_with_user_id(channel, user_id):
-    from xivo_dao.data_handler.user import services as user_services
-
-    user = user_services.get(user_id)
-
-    if user:
-        user_services.delete(user)
-
-
-def delete_user_with_firstname_lastname(firstname, lastname):
-    try:
-        remote_exec(_delete_user_with_firstname_lastname, firstname=firstname, lastname=lastname)
-    except RemoteError:
-        pass
-
-
-def _delete_user_with_firstname_lastname(channel, firstname, lastname):
-    from xivo_dao.data_handler.user import services as user_services
-
-    user = user_services.find_by_firstname_lastname(firstname, lastname)
-
-    if user:
-        user_services.delete(user)
-
-
-def delete_all():
-    user_ids = remote_exec_with_result(_all_user_ids)
-    for user_id in user_ids:
-        delete_user(user_id)
-
-
-def _all_user_ids(channel):
-    from xivo_dao.data_handler.user import services as user_services
-
-    user_ids = [u.id for u in user_services.find_all()]
-    channel.send(user_ids)
+def delete_users_with_firstname_lastname(firstname, lastname):
+    users = find_all_by_firstname_lastname(firstname, lastname)
+    for user in users:
+        delete_user(user['id'])
 
 
 def delete_user(user_id):
-    if get_by_user_id(user_id):
-        _delete_line_associations(user_id)
-        _delete_voicemail_associations(user_id)
-        _delete_func_key_associations(user_id)
+    if not user_exists(user_id):
+        return
 
-        template_id = func_key_helper.find_template_for_user(user_id)
-        remote_exec(_delete_using_user_service, user_id=user_id)
-        func_key_helper.delete_template_and_func_keys(template_id)
+    _delete_line_associations(user_id)
+    voicemail_helper.delete_voicemail_with_user_id(user_id)
+    func_key_helper.delete_func_keys_with_user_destination(user_id)
+
+    template_id = func_key_helper.find_template_for_user(user_id)
+    _delete_user(user_id)
+    func_key_helper.delete_template_and_func_keys(template_id)
 
 
 def _delete_line_associations(user_id):
@@ -178,27 +109,14 @@ def _delete_line_associations(user_id):
         line_helper.delete_line_associations(line_id)
 
 
-def _delete_voicemail_associations(user_id):
-    voicemail_helper.delete_voicemail_with_user_id(user_id)
-
-
-def _delete_func_key_associations(user_id):
-    func_key_helper.delete_func_keys_with_user_destination(user_id)
-
-
-def _delete_using_user_service(channel, user_id):
-    from xivo_dao.data_handler.user import services as user_services
-
-    user = user_services.get(user_id)
-    user_services.delete(user)
-
-
-'''
-    #TODO refactor to use dao
-'''
+def _delete_user(user_id):
+    response_for(user_action.delete_user(user_id))
 
 
 def add_user(data_dict):
+    '''
+        #TODO refactor to use dao
+    '''
     user = User()
 
     if 'id' in data_dict:

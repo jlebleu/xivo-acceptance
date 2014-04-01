@@ -44,7 +44,7 @@ def when_i_import_a_list_of_users(step):
 @step(u'Then user with name "([^"]*)" exists$')
 def then_user_with_name_exists(step, name):
     firstname, lastname = name.split(' ', 1)
-    assert user_helper.is_user_with_name_exists(firstname, lastname)
+    user_helper.get_by_firstname_lastname(firstname, lastname)
 
 
 @step(u'Then line with number "([^"]*)" exists$')
