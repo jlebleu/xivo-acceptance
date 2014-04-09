@@ -60,7 +60,8 @@ def find_by_firstname_lastname(firstname, lastname):
 
 def get_by_firstname_lastname(firstname, lastname):
     user = find_by_firstname_lastname(firstname, lastname)
-    assert_that(user, is_not(none()), "user %s %s not found" % (firstname, lastname))
+    msg = (u"user %s %s not found" % (firstname, lastname)).encode('utf8')
+    assert_that(user, is_not(none()), msg)
     return user
 
 
