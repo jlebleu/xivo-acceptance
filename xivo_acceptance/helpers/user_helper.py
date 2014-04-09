@@ -88,16 +88,18 @@ def delete_users_with_firstname_lastname(firstname, lastname):
 
 
 def delete_user(user_id):
-    if not user_exists(user_id):
-        return
+    if user_exists(user_id):
+        _delete_associations(user_id)
 
+        template_id = func_key_helper.find_template_for_user(user_id)
+        _delete_user(user_id)
+        func_key_helper.delete_template_and_func_keys(template_id)
+
+
+def _delete_associations(user_id):
     _delete_line_associations(user_id)
     voicemail_helper.delete_voicemail_with_user_id(user_id)
     func_key_helper.delete_func_keys_with_user_destination(user_id)
-
-    template_id = func_key_helper.find_template_for_user(user_id)
-    _delete_user(user_id)
-    func_key_helper.delete_template_and_func_keys(template_id)
 
 
 def _delete_line_associations(user_id):
