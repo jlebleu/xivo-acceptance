@@ -22,37 +22,18 @@ from xivo_acceptance.action.restapi import extension_action_restapi
 from xivo_acceptance.helpers import extension_helper
 
 
-@step(u'Given I have no extension with id "([^"]*)"')
-def given_i_have_no_extension_with_id_group1(step, extension_id):
-    extension_helper.delete(int(extension_id))
-
-
-@step(u'Given I have no extension with exten "([^"]*)"')
-def given_i_have_no_extension_with_exten_group1(step, pattern):
-    exten, context = pattern.split('@')
-    extension = extension_helper.find_extension_by_exten_context(exten, context)
+@step(u'Given I have no extension with exten "(\d+)@([\w-]+)"')
+def given_i_have_no_extension_with_exten_group1(step, exten, context):
+    extension = extension_helper.find_by_exten(exten, context)
     if extension:
-        extension_helper.delete(extension.id)
+        extension_helper.delete_extension(extension['id'])
 
 
 @step(u'Given I have the following extensions:')
 def given_i_have_the_following_extensions(step):
     for exteninfo in step.hashes:
         extension = _extract_extension_parameters(exteninfo)
-        _delete_extension(extension)
-        _create_extension(extension)
-
-
-def _delete_extension(extension):
-    if 'exten' in extension:
-        extension_helper.delete_extension_with_exten_context(extension['exten'],
-                                                             extension.get('context', 'default'))
-    if 'id' in extension:
-        extension_helper.delete(int(extension['id']))
-
-
-def _create_extension(extension):
-    extension_helper.create_extensions([extension])
+        extension_helper.add_or_replace_extension(extension)
 
 
 @step(u'When I access the list of extensions')
@@ -60,9 +41,15 @@ def when_i_access_the_list_of_extensions(step):
     world.response = extension_action_restapi.all_extensions()
 
 
-@step(u'When I access the extension with id "([^"]*)"')
-def when_i_access_the_extension_with_id_group1(step, extension_id):
-    world.response = extension_action_restapi.get_extension(extension_id)
+@step(u'When I access a fake extension id')
+def when_i_access_a_fake_extension_id(step):
+    world.response = extension_action_restapi.get_extension(999999999)
+
+
+@step(u'When I access the extension with exten "(\d+)@([\w-]+)"')
+def when_i_access_the_extension_with_exten_group1(step, exten, context):
+    extension = extension_helper.get_by_exten(exten, context)
+    world.response = extension_action_restapi.get_extension(extension['id'])
 
 
 @step(u'When I create an empty extension$')
@@ -76,15 +63,27 @@ def when_i_create_an_extension_with_the_following_parameters(step):
     world.response = extension_action_restapi.create_extension(parameters)
 
 
-@step(u'When I update the extension with id "([^"]*)" using the following parameters:')
-def when_i_update_the_extension_with_id_group1_using_the_following_parameters(step, extensionid):
+@step(u'When I update a fake extension')
+def when_i_update_a_fake_extension(step):
+    world.response = extension_action_restapi.update(999999999, {})
+
+
+@step(u'When I update the extension with exten "(\d+)@([\w-]+)" using the following parameters:')
+def when_i_update_the_extension_with_id_group1_using_the_following_parameters(step, exten, context):
+    extension = extension_helper.get_by_exten(exten, context)
     extensioninfo = _extract_extension_parameters(step.hashes[0])
-    world.response = extension_action_restapi.update(extensionid, extensioninfo)
+    world.response = extension_action_restapi.update(extension['id'], extensioninfo)
 
 
-@step(u'When I delete extension "([^"]*)"')
-def when_i_delete_extension_group1(step, extension_id):
-    world.response = extension_action_restapi.delete_extension(extension_id)
+@step(u'When I delete a fake extension')
+def when_i_delete_a_fake_extension(step):
+    world.response = extension_action_restapi.delete_extension(999999999)
+
+
+@step(u'When I delete extension with exten "(\d+)@([\w-]+)"')
+def when_i_delete_extension_group1(step, exten, context):
+    extension = extension_helper.get_by_exten(exten, context)
+    world.response = extension_action_restapi.delete_extension(extension['id'])
 
 
 @step(u'Then I get a list containing the following extensions:')
@@ -104,10 +103,10 @@ def then_i_have_an_extension_with_the_following_parameters(step):
     assert_that(extension, has_entries(parameters))
 
 
-@step(u'Then the extension "([^"]*)" no longer exists')
-def then_the_extension_group1_no_longer_exists(step, extension_id):
-    response = extension_action_restapi.get_extension(extension_id)
-    assert_that(response.status, equal_to(404))
+@step(u'Then the extension with exten "(\d+)@([\w-]+)" no longer exists')
+def then_the_extension_group1_no_longer_exists(step, exten, context):
+    extension = extension_helper.find_by_exten(exten, context)
+    assert_that(extension, none())
 
 
 def _filter_out_default_extensions():

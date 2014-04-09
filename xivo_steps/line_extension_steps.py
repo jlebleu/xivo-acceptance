@@ -39,6 +39,11 @@ def when_i_send_a_request_for_the_line_associated_to_extension_with_exten_group1
     world.response = line_extension_action.get_from_extension(extension.id)
 
 
+@step(u'When I link a fake extension with line id "([^"]*)"')
+def when_i_link_a_fake_extension_with_line_id_group1(step, line_id):
+    world.response = line_extension_action.associate(line_id, 999999999)
+
+
 @step(u'When I link extension "([^"]*)" with line id "([^"]*)"')
 def when_i_link_extension_group1_with_line_id_group2(step, extension, line_id):
     _link_line_and_extension(line_id, extension)
@@ -46,8 +51,8 @@ def when_i_link_extension_group1_with_line_id_group2(step, extension, line_id):
 
 def _link_line_and_extension(line_id, extension):
     exten, context = extension.split('@')
-    extension = extension_helper.find_extension_by_exten_context(exten, context)
-    world.response = line_extension_action.associate(line_id, extension.id)
+    extension = extension_helper.find_by_exten(exten, context)
+    world.response = line_extension_action.associate(line_id, extension['id'])
 
 
 @step(u'When I link extension id "([^"]*)" with line id "([^"]*)"')

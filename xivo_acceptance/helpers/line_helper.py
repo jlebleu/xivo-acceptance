@@ -20,6 +20,8 @@ from xivo_lettuce.remote_py_cmd import remote_exec, remote_exec_with_result
 from xivo_dao.data_handler.exception import ElementNotExistsError
 from xivo_dao.data_handler.line import services as line_services
 
+from xivo_acceptance.action.restapi import line_extension_action_restapi as line_extension_action
+
 
 def is_with_exten_context_exists(exten, context):
     try:
@@ -57,6 +59,15 @@ def find_with_user_id(user_id):
 def find_line_id_with_exten_context(exten, context):
     line = find_with_exten_context(exten, context)
     return line.id
+
+
+def find_extension_id_for_line(line_id):
+    response = line_extension_action.get(line_id)
+    if not response.status_ok():
+        return None
+
+    line_extension = response.resource()
+    return line_extension['extension_id']
 
 
 def find_sccp_lines_with_exten_context(exten, context):

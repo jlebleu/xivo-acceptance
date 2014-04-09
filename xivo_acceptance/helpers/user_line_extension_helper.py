@@ -24,7 +24,7 @@ from xivo_lettuce.postgres import exec_sql_request
 
 def delete_user_line_extension_voicemail(firstname, lastname, context=None, exten=None, mailbox=None):
     if exten and context:
-        extension_helper.delete_extension_with_exten_context(exten, context)
+        extension_helper.delete_extension_with_exten(exten, context)
         delete_sccp_lines_with_exten(exten, context)
     if mailbox and context:
         voicemail_helper.delete_voicemail_with_number_context(mailbox, context)
@@ -54,9 +54,9 @@ def delete_user_line_extension_with_user_id(user_id):
     if line_id:
         line_helper.delete_line(line_id)
 
-    extension_id = extension_helper.find_extension_id_for_line(line_id)
+    extension_id = line_helper.find_extension_id_for_line(line_id)
     if extension_id:
-        extension_helper.delete(extension_id)
+        extension_helper.delete_extension(extension_id)
 
     user_helper.delete_user(user.id)
 
