@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-from hamcrest import assert_that, is_not, none, any_of
+from hamcrest import assert_that, is_not, none
 from lettuce import world
 
 from xivo_acceptance.action.restapi import user_action_restapi as user_action
@@ -34,26 +34,21 @@ def add_or_replace_user(user):
     create_user(user)
 
 
-def response_for(response):
-    assert_that(response.status, any_of(200, 201, 204), response.data)
-    return response.data
-
-
 def user_exists(user_id):
     response = user_action.get_user(user_id)
     return response.status == 200
 
 
 def get_user(user_id):
-    user = response_for(user_action.get_user(user_id))
-    return user
+    response = user_action.get_user(user_id)
+    return response.resource()
 
 
 def find_all_by_firstname_lastname(firstname, lastname):
     fullname = "%s %s" % (firstname, lastname)
-    response = response_for(user_action.user_search(fullname))
+    response = user_action.user_search(fullname)
     matching = [user
-                for user in response['items']
+                for user in response.items()
                 if user['firstname'] == firstname and user['lastname'] == lastname]
     return matching
 
@@ -75,13 +70,15 @@ def find_user_id_with_firstname_lastname(firstname, lastname):
 
 
 def find_line_id_for_user(user_id):
-    response = response_for(user_line_action.get_user_line(user_id))
-    if response['items']:
-        return response['items'][0]['line_id']
+    response = user_line_action.get_user_line(user_id)
+    items = response.items()
+    if items:
+        return items[0]['line_id']
 
 
 def create_user(userinfo):
-    response_for(user_action.create_user(userinfo))
+    response = user_action.create_user(userinfo)
+    response.check_status()
 
 
 def delete_users_with_firstname_lastname(firstname, lastname):
@@ -110,7 +107,8 @@ def _delete_line_associations(user_id):
 
 
 def _delete_user(user_id):
-    response_for(user_action.delete_user(user_id))
+    response = user_action.delete_user(user_id)
+    response.check_status()
 
 
 def add_user(data_dict):

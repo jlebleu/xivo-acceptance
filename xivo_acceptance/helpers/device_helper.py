@@ -18,8 +18,6 @@
 import json
 import requests
 
-from hamcrest import assert_that, equal_to
-
 from lettuce.registry import world
 from xivo_acceptance.action.restapi import device_action_restapi as device_action
 
@@ -28,8 +26,9 @@ HEADERS = {'Content-Type': 'application/json'}
 
 
 def find_devices_with(key, value):
+    response = device_action.device_list({key: value})
     devices = [device
-               for device in device_action.device_list({key: value}).data['items']
+               for device in response.items()
                if device[key] == value]
     return devices
 
@@ -73,7 +72,8 @@ def delete_device(device_id):
 
 
 def remove_devices_over(nb_devices):
-    devices = device_action.device_list().data['items']
+    response = device_action.device_list()
+    devices = response.items()
     for device in devices[nb_devices:]:
         delete_device(device['id'])
 
@@ -87,9 +87,7 @@ def add_or_replace_device(device):
     remove_device(device)
 
     response = device_action.create_device(device)
-    assert_that(response.status, equal_to(201), response.data)
-
-    return response.data
+    return response.resource()
 
 
 def remove_device(device):
