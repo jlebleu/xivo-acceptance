@@ -62,7 +62,7 @@ def find_line_id_with_exten_context(exten, context):
 
 
 def find_extension_id_for_line(line_id):
-    response = line_extension_action.get(line_id)
+    response = line_extension_action.get_from_line(line_id)
     if not response.status_ok():
         return None
 

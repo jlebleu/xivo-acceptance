@@ -17,7 +17,6 @@
 from hamcrest import assert_that, is_not, none
 
 from xivo_lettuce.postgres import exec_sql_request
-from xivo_lettuce.remote_py_cmd import remote_exec_with_result
 from xivo_acceptance.action.restapi import extension_action_restapi as extension_action
 from xivo_acceptance.helpers import dialpattern_helper, user_helper, \
     group_helper, incall_helper, meetme_helper, queue_helper, line_helper
@@ -44,17 +43,12 @@ def all_extensions():
 
 
 def find_line_id_for_extension(extension_id):
-    return remote_exec_with_result(_find_line_id_for_extension, extension_id=extension_id)
+    response = extension_action.get_from_extension(extension_id)
+    if not response.status_ok():
+        return None
 
-
-def _find_line_id_for_extension(channel, extension_id):
-    from xivo_dao.data_handler.line_extension import services as line_extension_services
-
-    line_extension = line_extension_services.find_by_extension_id(extension_id)
-    if line_extension:
-        channel.send(line_extension.line_id)
-    else:
-        channel.send(None)
+    line_extension = response.resource()
+    return line_extension['line_id']
 
 
 def add_or_replace_extension(extension):

@@ -62,7 +62,7 @@ def when_i_link_extension_id_group1_with_line_id_group2(step, extension_id, line
 
 @step(u'When I send a request for the extension associated to line id "([^"]*)"')
 def when_i_send_a_request_for_the_extension_associated_to_line_id_group1(step, line_id):
-    world.response = line_extension_action.get(line_id)
+    world.response = line_extension_action.get_from_line(line_id)
 
 
 @step(u'When I dissociate the extension associated to line id "([^"]*)"')
