@@ -42,6 +42,19 @@ def generate_cache(start_time=None, end_time=None):
     assert_that(ret, equal_to(0), 'xivo-stall fill_db return value')
 
 
+def open_queue_stat_page_on_week(queue_name, date_week, config_name):
+    conf_id = stat_helper.find_conf_id_with_name(config_name)
+    queue_id = queue_helper.find_queue_id_with_name(queue_name)
+    host = world.config.xivo_host
+
+    uri = '''https://%s/statistics/call_center/index.php/data/stats1''' % host
+    qry = '''confid=%s&key=queue-%s&axetype=week&dbeg=%s&dend=%s&dday=%s&dweek=%s&dmonth=2012-08&dyear=2012''' % (conf_id, queue_id, date_week, date_week, date_week, date_week)
+
+    url = '%s?%s' % (uri, qry)
+
+    world.browser.get(url)
+
+
 def open_queue_stat_page_on_day(queue_name, day, config_name):
     conf_id = stat_helper.find_conf_id_with_name(config_name)
     queue_id = queue_helper.find_queue_id_with_name(queue_name)
