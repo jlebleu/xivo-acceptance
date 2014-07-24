@@ -12,4 +12,6 @@ Feature: WEBI Stats
           | Wednesday 1 |
           | Thursday 2  |
           | Friday 3    |
+          | Saturday 4  |
+          | Sunday 5    |
           | Total       |
